@@ -1,302 +1,315 @@
-import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Easing,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Feather from "react-native-vector-icons/Feather";
 
 export default function App() {
-  const [screen, setScreen] = useState('home'); // 'home' or 'chat'
+  const [screen, setScreen] = useState("home");
   const [messages, setMessages] = useState([]);
-  const [inputText, setInputText] = useState('');
-  const [language, setLanguage] = useState('en'); // 'en' or 'kin'
+  const [inputText, setInputText] = useState("");
+  const [language, setLanguage] = useState("en");
+  const [dark, setDark] = useState(false);
 
-  const texts = {
+  // Animated toggle knob
+  const knobPos = useRef(new Animated.Value(dark ? 28 : 2)).current;
+
+  const toggleTheme = () => {
+    const newState = !dark;
+    setDark(newState);
+    Animated.timing(knobPos, {
+      toValue: newState ? 28 : 2,
+      duration: 230,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const YELLOW = "#FFD400";
+  const BLACK = "#000";
+
+  const theme = {
+    bg: dark ? BLACK : "#F5F5F5",
+    card: dark ? "#111" : "#fff",
+    text: dark ? "#fff" : "#111",
+    sub: dark ? "#999" : "#666",
+    border: dark ? "#222" : "#DDD",
+    field: dark ? "#1D1D1D" : "#ECECEC",
+    accent: YELLOW,
+    track: dark ? "#333" : "#CFCFCF",
+    knob: dark ? YELLOW : "#fff",
+  };
+
+  const t = {
     en: {
-      appName: 'BazaAI',
-      heroTitle: 'Chat Smarter with AI',
-      heroSubtitle: 'Your intelligent AI companion for fast, smart, and insightful conversations.',
-      startChat: 'Start Chat',
-      whyTitle: 'Why BazaAI?',
-      features: ['AI-Powered Responses', 'Fast & Efficient', 'Insightful Conversations', 'Secure & Private'],
-      chatTitle: 'BazaAI Chat',
-      placeholder: 'Type your message...',
-      send: 'Send',
-      clear: 'Clear Chat',
-      back: 'Back',
+      app: "BazaAI",
+      hero: "Chat Smarter with AI",
+      desc: "Buy airtime and bundles. Send & withdraw money. Check your balance.",
+      start: "Start Chat",
+      why: "Why BazaAI?",
+      items: [
+        "Buy airtime and bundles",
+        "Send & withdraw money",
+        "Check your balance",
+        "Secure messaging",
+      ],
+      chat: "Conversation",
+      placeholder: "Type message...",
+      send: "Send",
+      clear: "Clear Chat",
+      back: "Back",
+      switch: "Kinyarwanda",
+      mode: "Dark Mode",
     },
     kin: {
-      appName: 'BazaAI',
-      heroTitle: 'Vugana ubwenge n’AI',
-      heroSubtitle: 'Umufasha wawe w’ubwenge wihuta, w’ubwenge kandi wuzuye amakuru.',
-      startChat: 'Tangira Ikiganiro',
-      whyTitle: 'Impamvu BazaAI?',
-      features: ['Ibisubizo by’ubwenge bwa AI', 'Byihuse kandi neza', 'Ikiganiro cyuzuye amakuru', 'Byizewe kandi bibitse neza'],
-      chatTitle: 'Ikiganiro BazaAI',
-      placeholder: 'Andika ubutumwa bwawe...',
-      send: 'Ohereza',
-      clear: 'Siba Ikiganiro',
-      back: 'Garuka',
+      app: "BazaAI",
+      hero: "Vugana na AI",
+      desc: "Amainite, bundles, kohereza & kubikuza, kureba balance.",
+      start: "Tangira Ikiganiro",
+      why: "Impamvu BazaAI?",
+      items: [
+        "Gura airtime & bundles",
+        "Ohereza & bikure amafaranga",
+        "Reba ayo usigaranye",
+        "Umutekano w’ubutumwa",
+      ],
+      chat: "Ikiganiro",
+      placeholder: "Andika ubutumwa…",
+      send: "Ohereza",
+      clear: "Siba Ibiganoro",
+      back: "Subira",
+      switch: "English",
+      mode: "Uburyo bw’Umwijima",
     },
+  }[language];
+
+  // Animations
+  const fadeSlide = useRef(new Animated.Value(0)).current;
+  const scaleBtn = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeSlide, {
+      toValue: 1,
+      duration: 650,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const send = () => {
+    if (!inputText.trim()) return;
+    setMessages([...messages, { id: Date.now().toString(), text: inputText }]);
+    setInputText("");
   };
 
-  const t = texts[language];
+  const clear = () => setMessages([]);
 
-  const handleSend = () => {
-    if (inputText.trim() === '') return;
-    setMessages(prev => [...prev, { id: Date.now().toString(), text: inputText }]);
-    setInputText('');
-  };
+  const toggleLang = () => setLanguage(language === "en" ? "kin" : "en");
 
-  const handleClearChat = () => {
-    setMessages([]);
-  };
-
-  const toggleLanguage = () => {
-    setLanguage(prev => (prev === 'en' ? 'kin' : 'en'));
-  };
-
-  if (screen === 'chat') {
+  /* CHAT SCREEN */
+  if (screen === "chat") {
     return (
       <KeyboardAvoidingView
-        style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[styles.full, { backgroundColor: theme.bg }]}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <StatusBar style="dark" />
-        <View style={styles.chatHeader}>
-          <Text style={styles.chatHeaderTitle}>{t.chatTitle}</Text>
-          <View style={styles.chatHeaderButtons}>
-            <TouchableOpacity onPress={handleClearChat} style={styles.clearButton}>
-              <Text style={styles.clearButtonText}>{t.clear}</Text>
+        <StatusBar style={dark ? "light" : "dark"} />
+        <View style={[styles.topBar, { borderColor: theme.border }]}>
+          <Text style={[styles.topTitle, { color: theme.text }]}>{t.chat}</Text>
+          <View style={styles.row}>
+            <TouchableOpacity style={styles.redBtn} onPress={clear}>
+              <Feather name="trash-2" size={18} color="#fff" />
+              <Text style={styles.redTxt}>{t.clear}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setScreen('home')} style={styles.backButtonContainer}>
-              <Text style={styles.backButton}>{t.back}</Text>
+            <TouchableOpacity onPress={() => setScreen("home")}>
+              <Text style={[styles.back, { color: theme.accent }]}>{t.back}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <FlatList
           data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.messageBubble}>
-              <Text style={styles.messageText}>{item.text}</Text>
-            </View>
-          )}
-          contentContainerStyle={styles.messagesList}
+          keyExtractor={(i) => i.id}
+          contentContainerStyle={{ padding: 18 }}
+          renderItem={({ item }) => {
+            const msgAnim = new Animated.Value(0);
+            useEffect(() => {
+              Animated.timing(msgAnim, {
+                toValue: 1,
+                duration: 350,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: true,
+              }).start();
+            }, []);
+            return (
+              <Animated.View
+                style={[
+                  styles.msg,
+                  { opacity: msgAnim, backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <Text style={{ color: theme.text }}>{item.text}</Text>
+              </Animated.View>
+            );
+          }}
         />
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputRow, { borderColor: theme.border }]}>
           <TextInput
-            style={styles.textInput}
-            placeholder={t.placeholder}
             value={inputText}
+            placeholder={t.placeholder}
+            placeholderTextColor={theme.sub}
             onChangeText={setInputText}
+            style={[styles.field, { backgroundColor: theme.field, color: theme.text }]}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-            <Text style={styles.sendButtonText}>{t.send}</Text>
+          <TouchableOpacity style={[styles.sendBtn, { backgroundColor: theme.accent }]} onPress={send}>
+            <Feather name="send" size={18} color={dark ? BLACK : "#000"} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     );
   }
 
-  // Home Screen
+  /* HOME SCREEN */
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <StatusBar style="dark" />
+    <ScrollView contentContainerStyle={[styles.home, { backgroundColor: theme.bg }]}>
+      <StatusBar style={dark ? "light" : "dark"} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.logo}>{t.appName}</Text>
-        <TouchableOpacity onPress={toggleLanguage} style={styles.languageButton}>
-          <Text style={styles.languageButtonText}>{language === 'en' ? 'Kinyarwanda' : 'English'}</Text>
+      <Text style={[styles.logo, { color: theme.text }]}>{t.app}</Text>
+      <TouchableOpacity onPress={toggleLang}>
+        <Text style={[styles.link, { color: theme.accent }]}>{t.switch}</Text>
+      </TouchableOpacity>
+
+      {/* Animated Switch */}
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.card,
+            transform: [
+              {
+                translateY: fadeSlide.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }),
+              },
+            ],
+            opacity: fadeSlide,
+          },
+        ]}
+      >
+        <View style={styles.toggleRow}>
+          <TouchableOpacity
+            onPress={toggleTheme}
+            style={[styles.track, { backgroundColor: theme.track }]}
+            activeOpacity={0.8}
+          >
+            <Animated.View style={[styles.knob, { backgroundColor: theme.knob, left: knobPos }]} />
+          </TouchableOpacity>
+          <Text style={[styles.mode, { color: theme.text }]}>{t.mode}</Text>
+        </View>
+      </Animated.View>
+
+      {/* Hero */}
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.card,
+            transform: [
+              {
+                translateY: fadeSlide.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }),
+              },
+            ],
+            opacity: fadeSlide,
+          },
+        ]}
+      >
+        <Text style={[styles.hero, { color: theme.text }]}>{t.hero}</Text>
+        <Text style={[styles.sub, { color: theme.sub }]}>{t.desc}</Text>
+
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPressIn={() => Animated.spring(scaleBtn, { toValue: 0.92, useNativeDriver: true }).start()}
+          onPressOut={() => Animated.spring(scaleBtn, { toValue: 1, useNativeDriver: true }).start()}
+          onPress={() => setScreen("chat")}
+        >
+          <Animated.View style={{ transform: [{ scale: scaleBtn }], flexDirection: "row", paddingVertical: 16, borderRadius: 14, backgroundColor: theme.accent, justifyContent: "center", alignItems: "center", gap: 10 }}>
+            <Feather name="message-square" size={18} />
+            <Text style={styles.mainTxt}>{t.start}</Text>
+          </Animated.View>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      {/* Hero Section */}
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle}>{t.heroTitle}</Text>
-        <Text style={styles.heroSubtitle}>{t.heroSubtitle}</Text>
-        <TouchableOpacity style={styles.ctaButton} onPress={() => setScreen('chat')}>
-          <Text style={styles.ctaButtonText}>{t.startChat}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Features Section */}
-      <View style={styles.features}>
-        <Text style={styles.featuresTitle}>{t.whyTitle}</Text>
-        {t.features.map((feature, index) => (
-          <View style={styles.featureItem} key={index}>
-            <Text style={styles.featureIcon}>✅</Text>
-            <Text style={styles.featureText}>{feature}</Text>
+      {/* Benefits */}
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.card,
+            transform: [
+              {
+                translateY: fadeSlide.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }),
+              },
+            ],
+            opacity: fadeSlide,
+          },
+        ]}
+      >
+        <Text style={[styles.section, { color: theme.text }]}>{t.why}</Text>
+        {t.items.map((f, i) => (
+          <View key={i} style={styles.iconRow}>
+            <Feather name="check-circle" size={18} color={theme.accent} />
+            <Text style={[styles.feature, { color: theme.text }]}>{f}</Text>
           </View>
         ))}
-      </View>
+      </Animated.View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 50,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  header: {
-    marginBottom: 40,
-    width: '100%',
-    alignItems: 'center',
-  },
-  logo: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  languageButton: {
-    marginTop: 10,
-    backgroundColor: '#4F46E5',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  languageButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  hero: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 50,
-  },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  heroSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
-  },
-  ctaButton: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-  },
-  ctaButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  features: {
-    width: '100%',
-  },
-  featuresTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 10,
-  },
-  featureIcon: {
-    fontSize: 24,
-    marginRight: 15,
-  },
-  featureText: {
-    fontSize: 16,
-    color: '#374151',
-    flexShrink: 1,
-  },
-  // Chat Screen Styles
-  chatContainer: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  chatHeader: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  chatHeaderTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  chatHeaderButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 10,
-  },
-  clearButton: {
-    marginRight: 15,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#EF4444',
-    borderRadius: 8,
-  },
-  clearButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  backButtonContainer: {},
-  backButton: {
-    fontSize: 16,
-    color: '#4F46E5',
-  },
-  messagesList: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  messageBubble: {
-    backgroundColor: '#E0E7FF',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
-    maxWidth: '80%',
-  },
-  messageText: {
-    color: '#111827',
-    fontSize: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    fontSize: 16,
-    marginRight: 10,
-  },
-  sendButton: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  sendButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  full: { flex: 1 },
+  home: { padding: 24, alignItems: "center" },
+  logo: { fontSize: 38, fontWeight: "900" },
+  link: { marginTop: 6, fontWeight: "800", fontSize: 15 },
+  card: { width: "100%", borderRadius: 20, padding: 22, marginTop: 26, elevation: 4 },
+
+  // Switch
+  toggleRow: { flexDirection: "row", alignItems: "center" },
+  track: { width: 56, height: 30, borderRadius: 30, padding: 2 },
+  knob: { width: 24, height: 24, borderRadius: 24, position: "absolute" },
+  mode: { marginLeft: 16, fontWeight: "700", fontSize: 16 },
+
+  // Hero
+  hero: { fontSize: 26, fontWeight: "900", marginBottom: 10 },
+  sub: { fontSize: 15, lineHeight: 22, marginBottom: 22 },
+  mainBtn: { flexDirection: "row", gap: 10, paddingVertical: 14, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  mainTxt: { fontSize: 16, fontWeight: "900" },
+
+  // Benefits
+  section: { fontSize: 20, fontWeight: "900", marginBottom: 14 },
+  iconRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  feature: { fontSize: 15, marginLeft: 10, fontWeight: "600" },
+
+  // Chat
+  topBar: { padding: 22, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between" },
+  topTitle: { fontSize: 22, fontWeight: "900" },
+  row: { flexDirection: "row", alignItems: "center" },
+  redBtn: { flexDirection: "row", backgroundColor: "#E53935", paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, marginRight: 14, alignItems: "center", gap: 6 },
+  redTxt: { fontWeight: "800", color: "#fff" },
+  back: { fontWeight: "800", fontSize: 16 },
+
+  msg: { borderWidth: 1, padding: 14, borderRadius: 14, marginBottom: 12 },
+  inputRow: { padding: 12, borderTopWidth: 1, flexDirection: "row", alignItems: "center" },
+  field: { flex: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, marginRight: 12 },
+  sendBtn: { padding: 12, borderRadius: 50, alignItems: "center", justifyContent: "center" },
 });
