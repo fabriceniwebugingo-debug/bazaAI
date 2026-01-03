@@ -1,5 +1,7 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import axios from "axios";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -13,127 +15,178 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Feather from "react-native-vector-icons/Feather";
+
+// Ensure axios always sends a valid Content-Type with charset to avoid "charset=undefined" issues
+axios.defaults.headers.post["Content-Type"] = "application/json; charset=utf-8";
 
 export default function App() {
-  const [screen, setScreen] = useState("home");
+  // --- App State ---
+  const [screen, setScreen] = useState("home"); // home | chat | register
+  const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState("en");
+
+  // Chat state
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
-  const [language, setLanguage] = useState("en");
-  const [dark, setDark] = useState(false);
 
-  // Animated toggle knob
-  const knobPos = useRef(new Animated.Value(dark ? 28 : 2)).current;
+  // Registration state
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+
+  // --- Theme & Animation ---
+  const knob = useRef(new Animated.Value(2)).current;
 
   const toggleTheme = () => {
-    const newState = !dark;
-    setDark(newState);
-    Animated.timing(knobPos, {
-      toValue: newState ? 28 : 2,
-      duration: 230,
-      easing: Easing.out(Easing.ease),
+    Animated.timing(knob, {
+      toValue: darkMode ? 2 : 24,
+      duration: 200,
+      easing: Easing.ease,
       useNativeDriver: false,
     }).start();
+    setDarkMode(!darkMode);
   };
 
-  const YELLOW = "#FFD400";
-  const BLACK = "#000";
+  const COLORS = {
+    MTN_YELLOW: "#FFD400",
+    BLACK: "#000",
+  };
 
   const theme = {
-    bg: dark ? BLACK : "#F5F5F5",
-    card: dark ? "#111" : "#fff",
-    text: dark ? "#fff" : "#111",
-    sub: dark ? "#999" : "#666",
-    border: dark ? "#222" : "#DDD",
-    field: dark ? "#1D1D1D" : "#ECECEC",
-    accent: YELLOW,
-    track: dark ? "#333" : "#CFCFCF",
-    knob: dark ? YELLOW : "#fff",
+    background: darkMode ? "#000" : "#F6F6F6",
+    card: darkMode ? "#111" : "#FFF",
+    text: darkMode ? "#FFF" : "#111",
+    sub: darkMode ? "#BBB" : "#555",
+    input: darkMode ? "#1E1E1E" : "#EEE",
+    accent: COLORS.MTN_YELLOW,
+    track: darkMode ? "#333" : "#DDD",
+    knob: darkMode ? COLORS.MTN_YELLOW : COLORS.BLACK,
   };
 
-  const t = {
+  // --- Translations ---
+  const translations = {
     en: {
       app: "BazaAI",
       hero: "Chat Smarter with AI",
-      desc: "Buy airtime and bundles. Send & withdraw money. Check your balance.",
+      sub: "Airtime • Money • Balance • Support",
       start: "Start Chat",
-      why: "Why BazaAI?",
-      items: [
-        "Buy airtime and bundles",
-        "Send & withdraw money",
-        "Check your balance",
-        "Secure messaging",
-      ],
       chat: "Conversation",
       placeholder: "Type message...",
       send: "Send",
       clear: "Clear Chat",
       back: "Back",
-      switch: "Kinyarwanda",
-      mode: "Dark Mode",
+      dark: "Dark Mode",
+      lang: "Kinyarwanda",
+      features: [
+        { text: "Buy airtime & bundles", icon: "cellphone" },
+        { text: "Send & withdraw money", icon: "cash-multiple" },
+        { text: "Check your balance", icon: "wallet-outline" },
+        { text: "Secure messaging", icon: "shield-check" },
+      ],
     },
     kin: {
       app: "BazaAI",
-      hero: "Vugana na AI",
-      desc: "Amainite, bundles, kohereza & kubikuza, kureba balance.",
+      hero: "Vugana n’ubwenge bwa AI",
+      sub: "Amainite • Amafaranga • Konti • Ubufasha",
       start: "Tangira Ikiganiro",
-      why: "Impamvu BazaAI?",
-      items: [
-        "Gura airtime & bundles",
-        "Ohereza & bikure amafaranga",
-        "Reba ayo usigaranye",
-        "Umutekano w’ubutumwa",
-      ],
       chat: "Ikiganiro",
-      placeholder: "Andika ubutumwa…",
+      placeholder: "Andika ubutumwa...",
       send: "Ohereza",
-      clear: "Siba Ibiganoro",
-      back: "Subira",
-      switch: "English",
-      mode: "Uburyo bw’Umwijima",
+      clear: "Siba Ikiganiro",
+      back: "Subira Inyuma",
+      dark: "Uburyo bw’umwijima",
+      lang: "English",
+      features: [
+        { text: "Gura amainite na bundles", icon: "cellphone" },
+        { text: "Ohereza & Kurura amafaranga", icon: "cash-multiple" },
+        { text: "Reba ayo usigaranye", icon: "wallet-outline" },
+        { text: "Ubutumwa bufite umutekano", icon: "shield-check" },
+      ],
     },
-  }[language];
-
-  // Animations
-  const fadeSlide = useRef(new Animated.Value(0)).current;
-  const scaleBtn = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.timing(fadeSlide, {
-      toValue: 1,
-      duration: 650,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  const send = () => {
-    if (!inputText.trim()) return;
-    setMessages([...messages, { id: Date.now().toString(), text: inputText }]);
-    setInputText("");
   };
 
-  const clear = () => setMessages([]);
+  const t = translations[language];
 
-  const toggleLang = () => setLanguage(language === "en" ? "kin" : "en");
+  const toggleLanguage = () =>
+    setLanguage(language === "en" ? "kin" : "en");
 
-  /* CHAT SCREEN */
+  // ------------ BACKEND URL CONFIGURATION ------------
+  // Replace this with the correct backend address for your setup:
+  // - running backend on same machine and testing on Android emulator (AVD): use http://10.0.2.2:8000
+  // - running on device or physical phone using same Wi-Fi: use your machine's LAN IP, e.g. http://192.168.43.171:8000
+  // - running on iOS simulator: use http://localhost:8000
+  // The default here is the IP you provided earlier. Change if required.
+  const BACKEND_URL = "http://192.168.43.171:8000";
+
+  // --- Chat Handlers ---
+  const sendMessage = async () => {
+    if (!inputText.trim()) return;
+
+    // Add user message
+    const userMessage = { id: Date.now().toString(), from: "user", text: inputText };
+    setMessages((prev) => [...prev, userMessage]);
+
+    const messageText = inputText;
+    setInputText("");
+
+    try {
+      const response = await axios.post(
+        `${BACKEND_URL}/chat`,
+        { phone: phone || "+250781077741", message: messageText },
+        { headers: { "Content-Type": "application/json; charset=utf-8" } }
+      );
+      const reply = response.data.reply;
+
+      const aiMessage = {
+        id: Date.now().toString() + "_ai",
+        from: "ai",
+        text: reply,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + "_ai",
+          from: "ai",
+          text: "⚠️ Failed to reach server. Please try again.",
+        },
+      ]);
+    }
+  };
+
+  const clearChat = () => setMessages([]);
+
+  // --- Registration Handler ---
+  const submitRegistration = () => {
+    if (!name.trim() || !phone.trim()) {
+      return alert("Please enter name and phone number");
+    }
+    alert(`Registered ${name} with phone ${phone}`);
+    setScreen("home");
+  };
+
+  // --- Render Screens ---
   if (screen === "chat") {
     return (
       <KeyboardAvoidingView
-        style={[styles.full, { backgroundColor: theme.bg }]}
+        style={[styles.container, { backgroundColor: theme.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <StatusBar style={dark ? "light" : "dark"} />
-        <View style={[styles.topBar, { borderColor: theme.border }]}>
-          <Text style={[styles.topTitle, { color: theme.text }]}>{t.chat}</Text>
+        <StatusBar style={darkMode ? "light" : "dark"} />
+        <View style={[styles.chatHeader, { backgroundColor: theme.card }]}>
+          <Text style={[styles.chatTitle, { color: theme.text }]}>{t.chat}</Text>
           <View style={styles.row}>
-            <TouchableOpacity style={styles.redBtn} onPress={clear}>
-              <Feather name="trash-2" size={18} color="#fff" />
-              <Text style={styles.redTxt}>{t.clear}</Text>
+            <TouchableOpacity onPress={clearChat} style={styles.iconBtn}>
+              <MaterialCommunityIcons name="delete" size={22} color="#E53935" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setScreen("home")}>
-              <Text style={[styles.back, { color: theme.accent }]}>{t.back}</Text>
+              <MaterialCommunityIcons
+                name="arrow-left"
+                size={24}
+                color={theme.accent}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -141,175 +194,175 @@ export default function App() {
         <FlatList
           data={messages}
           keyExtractor={(i) => i.id}
-          contentContainerStyle={{ padding: 18 }}
-          renderItem={({ item }) => {
-            const msgAnim = new Animated.Value(0);
-            useEffect(() => {
-              Animated.timing(msgAnim, {
-                toValue: 1,
-                duration: 350,
-                easing: Easing.out(Easing.ease),
-                useNativeDriver: true,
-              }).start();
-            }, []);
-            return (
-              <Animated.View
-                style={[
-                  styles.msg,
-                  { opacity: msgAnim, backgroundColor: theme.card, borderColor: theme.border },
-                ]}
-              >
-                <Text style={{ color: theme.text }}>{item.text}</Text>
-              </Animated.View>
-            );
-          }}
+          contentContainerStyle={{ padding: 20 }}
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.bubble,
+                {
+                  backgroundColor:
+                    item.from === "user" ? theme.accent : theme.card,
+                  alignSelf:
+                    item.from === "user" ? "flex-end" : "flex-start",
+                },
+              ]}
+            >
+              <Text style={{ color: item.from === "user" ? "#000" : theme.text }}>
+                {item.text}
+              </Text>
+            </View>
+          )}
         />
 
-        <View style={[styles.inputRow, { borderColor: theme.border }]}>
+        <View style={[styles.inputBar, { backgroundColor: theme.card }]}>
           <TextInput
-            value={inputText}
             placeholder={t.placeholder}
             placeholderTextColor={theme.sub}
+            value={inputText}
             onChangeText={setInputText}
-            style={[styles.field, { backgroundColor: theme.field, color: theme.text }]}
+            style={[styles.input, { backgroundColor: theme.input, color: theme.text }]}
           />
-          <TouchableOpacity style={[styles.sendBtn, { backgroundColor: theme.accent }]} onPress={send}>
-            <Feather name="send" size={18} color={dark ? BLACK : "#000"} />
+          <TouchableOpacity onPress={sendMessage}>
+            <MaterialCommunityIcons
+              name="send-circle"
+              size={42}
+              color={theme.accent}
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     );
   }
 
-  /* HOME SCREEN */
-  return (
-    <ScrollView contentContainerStyle={[styles.home, { backgroundColor: theme.bg }]}>
-      <StatusBar style={dark ? "light" : "dark"} />
-
-      <Text style={[styles.logo, { color: theme.text }]}>{t.app}</Text>
-      <TouchableOpacity onPress={toggleLang}>
-        <Text style={[styles.link, { color: theme.accent }]}>{t.switch}</Text>
-      </TouchableOpacity>
-
-      {/* Animated Switch */}
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.card,
-            transform: [
-              {
-                translateY: fadeSlide.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }),
-              },
-            ],
-            opacity: fadeSlide,
-          },
-        ]}
+  if (screen === "register") {
+    return (
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: theme.background, padding: 24 }]}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.toggleRow}>
-          <TouchableOpacity
-            onPress={toggleTheme}
-            style={[styles.track, { backgroundColor: theme.track }]}
-            activeOpacity={0.8}
-          >
-            <Animated.View style={[styles.knob, { backgroundColor: theme.knob, left: knobPos }]} />
-          </TouchableOpacity>
-          <Text style={[styles.mode, { color: theme.text }]}>{t.mode}</Text>
-        </View>
-      </Animated.View>
+        <StatusBar style={darkMode ? "light" : "dark"} />
+        <Text style={[styles.chatTitle, { color: theme.text, marginBottom: 20 }]}>
+          Register
+        </Text>
 
-      {/* Hero */}
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.card,
-            transform: [
-              {
-                translateY: fadeSlide.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }),
-              },
-            ],
-            opacity: fadeSlide,
-          },
-        ]}
-      >
-        <Text style={[styles.hero, { color: theme.text }]}>{t.hero}</Text>
-        <Text style={[styles.sub, { color: theme.sub }]}>{t.desc}</Text>
+        <TextInput
+          placeholder="Name"
+          placeholderTextColor={theme.sub}
+          value={name}
+          onChangeText={setName}
+          style={[styles.input, { marginBottom: 12, backgroundColor: theme.input, color: theme.text }]}
+        />
+
+        <TextInput
+          placeholder="Phone Number"
+          placeholderTextColor={theme.sub}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          style={[styles.input, { marginBottom: 20, backgroundColor: theme.input, color: theme.text }]}
+        />
 
         <TouchableOpacity
-          activeOpacity={0.9}
-          onPressIn={() => Animated.spring(scaleBtn, { toValue: 0.92, useNativeDriver: true }).start()}
-          onPressOut={() => Animated.spring(scaleBtn, { toValue: 1, useNativeDriver: true }).start()}
+          style={[styles.startBtn, { backgroundColor: theme.accent }]}
+          onPress={submitRegistration}
+        >
+          <MaterialCommunityIcons name="check-circle" size={20} color="#000" />
+          <Text style={styles.startText}>Submit</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setScreen("home")} style={{ marginTop: 12 }}>
+          <Text style={{ color: theme.accent, fontWeight: "700" }}>Back</Text>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  return (
+    <ScrollView
+      contentContainerStyle={[styles.home, { backgroundColor: theme.background }]}
+    >
+      <StatusBar style={darkMode ? "light" : "dark"} />
+
+      <Text style={[styles.logo, { color: theme.text }]}>{t.app}</Text>
+
+      <TouchableOpacity onPress={toggleLanguage} style={styles.langRow}>
+        <MaterialCommunityIcons name="translate" size={22} color={theme.accent} />
+        <Text style={{ color: theme.accent }}>{t.lang}</Text>
+      </TouchableOpacity>
+
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <View style={styles.toggleRow}>
+          <TouchableOpacity
+            style={[styles.toggleTrack, { backgroundColor: theme.track }]}
+            onPress={toggleTheme}
+          >
+            <Animated.View
+              style={[styles.knob, { backgroundColor: theme.knob, left: knob }]}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.toggleText, { color: theme.text }]}>{t.dark}</Text>
+        </View>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <MaterialCommunityIcons
+          name="robot-happy-outline"
+          size={44}
+          color={theme.accent}
+        />
+        <Text style={[styles.hero, { color: theme.text }]}>{t.hero}</Text>
+        <Text style={{ color: theme.sub }}>{t.sub}</Text>
+
+        <TouchableOpacity
+          style={[styles.startBtn, { backgroundColor: theme.accent }]}
           onPress={() => setScreen("chat")}
         >
-          <Animated.View style={{ transform: [{ scale: scaleBtn }], flexDirection: "row", paddingVertical: 16, borderRadius: 14, backgroundColor: theme.accent, justifyContent: "center", alignItems: "center", gap: 10 }}>
-            <Feather name="message-square" size={18} />
-            <Text style={styles.mainTxt}>{t.start}</Text>
-          </Animated.View>
+          <MaterialCommunityIcons name="chat" size={20} color="#000" />
+          <Text style={styles.startText}>{t.start}</Text>
         </TouchableOpacity>
-      </Animated.View>
 
-      {/* Benefits */}
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.card,
-            transform: [
-              {
-                translateY: fadeSlide.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }),
-              },
-            ],
-            opacity: fadeSlide,
-          },
-        ]}
-      >
-        <Text style={[styles.section, { color: theme.text }]}>{t.why}</Text>
-        {t.items.map((f, i) => (
-          <View key={i} style={styles.iconRow}>
-            <Feather name="check-circle" size={18} color={theme.accent} />
-            <Text style={[styles.feature, { color: theme.text }]}>{f}</Text>
+        <TouchableOpacity
+          style={[styles.startBtn, { backgroundColor: "#4CAF50", marginTop: 12 }]}
+          onPress={() => setScreen("register")}
+        >
+          <MaterialCommunityIcons name="account-plus" size={20} color="#FFF" />
+          <Text style={[styles.startText, { color: "#FFF" }]}>Register</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        {t.features.map((f, i) => (
+          <View key={i} style={styles.featureRow}>
+            <MaterialCommunityIcons name={f.icon} size={22} color={theme.accent} />
+            <Text style={[styles.featureText, { color: theme.text }]}>{f.text}</Text>
           </View>
         ))}
-      </Animated.View>
+      </View>
     </ScrollView>
   );
 }
 
+// --- Styles ---
 const styles = StyleSheet.create({
-  full: { flex: 1 },
+  container: { flex: 1 },
   home: { padding: 24, alignItems: "center" },
-  logo: { fontSize: 38, fontWeight: "900" },
-  link: { marginTop: 6, fontWeight: "800", fontSize: 15 },
-  card: { width: "100%", borderRadius: 20, padding: 22, marginTop: 26, elevation: 4 },
-
-  // Switch
+  logo: { fontSize: 36, fontWeight: "900" },
+  langRow: { flexDirection: "row", gap: 8, marginVertical: 8 },
+  card: { width: "100%", padding: 22, borderRadius: 20, marginTop: 22, alignItems: "center" },
+  hero: { fontSize: 24, fontWeight: "900", marginVertical: 10 },
+  startBtn: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 14, marginTop: 18 },
+  startText: { fontWeight: "900", fontSize: 16 },
   toggleRow: { flexDirection: "row", alignItems: "center" },
-  track: { width: 56, height: 30, borderRadius: 30, padding: 2 },
-  knob: { width: 24, height: 24, borderRadius: 24, position: "absolute" },
-  mode: { marginLeft: 16, fontWeight: "700", fontSize: 16 },
+  toggleTrack: { width: 48, height: 26, borderRadius: 20 },
+  knob: { width: 20, height: 20, borderRadius: 20, position: "absolute", top: 3 },
+  toggleText: { marginLeft: 12, fontWeight: "700" },
+  featureRow: { flexDirection: "row", gap: 12, marginVertical: 6 },
+  featureText: { fontSize: 15 },
 
-  // Hero
-  hero: { fontSize: 26, fontWeight: "900", marginBottom: 10 },
-  sub: { fontSize: 15, lineHeight: 22, marginBottom: 22 },
-  mainBtn: { flexDirection: "row", gap: 10, paddingVertical: 14, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  mainTxt: { fontSize: 16, fontWeight: "900" },
-
-  // Benefits
-  section: { fontSize: 20, fontWeight: "900", marginBottom: 14 },
-  iconRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
-  feature: { fontSize: 15, marginLeft: 10, fontWeight: "600" },
-
-  // Chat
-  topBar: { padding: 22, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between" },
-  topTitle: { fontSize: 22, fontWeight: "900" },
-  row: { flexDirection: "row", alignItems: "center" },
-  redBtn: { flexDirection: "row", backgroundColor: "#E53935", paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, marginRight: 14, alignItems: "center", gap: 6 },
-  redTxt: { fontWeight: "800", color: "#fff" },
-  back: { fontWeight: "800", fontSize: 16 },
-
-  msg: { borderWidth: 1, padding: 14, borderRadius: 14, marginBottom: 12 },
-  inputRow: { padding: 12, borderTopWidth: 1, flexDirection: "row", alignItems: "center" },
-  field: { flex: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, marginRight: 12 },
-  sendBtn: { padding: 12, borderRadius: 50, alignItems: "center", justifyContent: "center" },
+  chatHeader: { padding: 20, flexDirection: "row", justifyContent: "space-between" },
+  chatTitle: { fontSize: 22, fontWeight: "900" },
+  row: { flexDirection: "row", gap: 14 },
+  bubble: { padding: 14, borderRadius: 14, marginBottom: 10, maxWidth: "75%" },
+  inputBar: { flexDirection: "row", padding: 10, alignItems: "center" },
+  input: { flex: 1, padding: 12, borderRadius: 18, marginRight: 10 },
 });
